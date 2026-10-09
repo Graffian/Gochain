@@ -2,13 +2,16 @@ package main
 
 import (
 	"bufio"
-	"fmt"
-	"strings"
-	"os"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"os"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type Block struct{
@@ -20,6 +23,16 @@ type Block struct{
 	Hash string
 }
 
+func (b *Block) Mine(difficulty int){
+	prefix := strings.Repeat("0" , difficulty)
+	for {
+		b.Hash = b.calculate_hash()
+		if strings.HasPrefix(b.Hash , prefix){
+			return
+		}
+		b.Nonce++
+	}
+}
 const balance int = 10000
 
 func main() {
@@ -57,6 +70,7 @@ func main() {
 			fmt.Println("Not enough balance")
 		}else{
 			fmt.Printf("You sent %d GC to %s" , recvr_amt , recvr)
+
 		}
 	}
 
@@ -64,6 +78,25 @@ func main() {
 
 
 }
+
+
+func (b Block) calculate_hash() string{
+	record := fmt.Sprintf("%d|%d|%s|%s|%d" , b.Index , b.Timestamp , b.Data , b.PrevHash , b.Nonce)
+	sum := sha256.Sum256([]byte(record))
+	return hex.EncodeToString(sum[ : ])
+}
+
+func genesis_block() Block{
+	b:= Block{
+		Index: 0,
+		Timestamp: int(time.Now().Unix()),
+		Data: "genesis",
+		PrevHash: "0",
+	}
+	b.Mine(4)
+	return b
+}
+
 
 func gen_keys() map[string]any{
 	privateKey,err := ecdsa.GenerateKey(elliptic.P256() , rand.Reader)
@@ -76,6 +109,8 @@ func gen_keys() map[string]any{
 		"publicKey" : publicKey.X,
 		"privateKey" : privateKey.D,
 	}
+	genesis := genesis_block()
+	fmt.Println(genesis)
 	return keys
 
 }
